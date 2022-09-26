@@ -1,0 +1,3 @@
+matplotlip==3.6.0
+python-telegram-bot==13.0
+peewee==3.13.13
