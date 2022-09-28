@@ -10,7 +10,7 @@ from matplotlib.ticker import MaxNLocator
 
 from config import COLOR_GRID, COLOR_BARS, COLOR_BARS_BORDERS, COLORS_TRAND_LINE
 
-matplotlib.use('TkAgg')
+matplotlib.use('Agg')
 
 logger = logging.getLogger(__name__)
 
