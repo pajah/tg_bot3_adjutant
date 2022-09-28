@@ -537,7 +537,7 @@ def render_view_timeframe(upd, ctx):
 
         ctx.bot.send_photo(
             chat_id=upd.effective_chat.id,
-            photo=open('test.png', 'rb'),
+            photo=open('temp.png', 'rb'),
             reply_markup=timeframe_menu)
         return start_logger(upd, ctx)
 
@@ -558,7 +558,7 @@ def render_view_timeframe(upd, ctx):
 
         ctx.bot.send_photo(
             chat_id=upd.effective_chat.id,
-            photo=open('test.png', 'rb'),
+            photo=open('temp.png', 'rb'),
             reply_markup=timeframe_menu)
         return start_logger(upd, ctx)
 
@@ -581,7 +581,7 @@ def render_view_timeframe(upd, ctx):
 
         ctx.bot.send_photo(
             chat_id=upd.effective_chat.id,
-            photo=open('test.png', 'rb'),
+            photo=open('temp.png', 'rb'),
             reply_markup=timeframe_menu)
         return start_logger(upd, ctx)
     else:
