@@ -499,7 +499,7 @@ def select_vew_timeframe(upd, ctx):
     requested_event = Events.get(Events.event_type == requested_event_type)
     ctx.chat_data['view_cat_id'] = requested_event.id
 
-    user = Users.get(Users.tg_id == upd.message.from_user.id)
+    user, _ = Users.get_or_create(tg_id=upd.message.from_user.id)
     ctx.chat_data['user_id'] = user.id  # move to general
 
     reply_text = 'Select time frame:'
