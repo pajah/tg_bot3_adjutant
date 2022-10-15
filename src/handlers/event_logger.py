@@ -6,6 +6,7 @@ from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Fi
 from telegram import parsemode, ReplyKeyboardRemove, ReplyKeyboardMarkup
 
 from .commands import cancel
+from handlers.commands import start
 from event_plotter import plot_week_events, plot_month_events, plot_day_events
 from markups.logger_menu import logger_menu_buttons, logger_start_menu, make_categories_menu, yes_no_menu, \
     timeframe_menu, manage_cats_menu
@@ -71,7 +72,8 @@ def select_logger_mode(upd, ctx):
             chat_id=upd.effective_chat.id,
             text=reply_text,
             parse_mode=parsemode.ParseMode.HTML,
-            reply_markup=manage_cats_menu)
+            reply_markup=manage_cats_menu,
+            )
         return CAT_MANAGE_MODE
 
 
@@ -114,7 +116,7 @@ def log_event(upd, ctx):
     if 'user_cats' in ctx.chat_data:
         if event_type in ctx.chat_data['user_cats']:
             logger.info('Create user event.')
-            user_event = UsersEvents.create(user=user.id, event=event.id)
+            user_event = UsersEvents.create(user_id=user.id, event_id=event.id)
             if user_event:
                 ctx.chat_data['last_event_id'] = user_event.id
                 reply_text = 'Event for %s saved correctly!\n' % event_type
@@ -125,7 +127,7 @@ def log_event(upd, ctx):
                 chat_id=upd.effective_chat.id,
                 text=reply_text,
                 parse_mode=parsemode.ParseMode.HTML,
-                reply_markup=ReplyKeyboardMarkup([['0.5'], ['1'], ['/skip']]))
+                reply_markup=ReplyKeyboardMarkup([['0.5'], ['1'], ['/skip']], resize_keyboard=True))
             return ADD_AMOUNT
 
         if ctx.chat_data.get('need_description', False):
@@ -134,7 +136,7 @@ def log_event(upd, ctx):
                 chat_id=upd.effective_chat.id,
                 text=reply_text,
                 parse_mode=parsemode.ParseMode.HTML,
-                reply_markup=ReplyKeyboardMarkup([['/skip']]))
+                reply_markup=ReplyKeyboardMarkup([['/skip']], resize_keyboard=True))
             return ADD_DESCR
 
         ctx.bot.send_message(
@@ -182,7 +184,7 @@ def add_amount(upd, ctx):
                 chat_id=upd.effective_chat.id,
                 text=reply_text,
                 parse_mode=parsemode.ParseMode.HTML,
-                reply_markup=ReplyKeyboardMarkup([['/skip']]))
+                reply_markup=ReplyKeyboardMarkup([['/skip']], resize_keyboard=True))
             return ADD_DESCR
         else:
             ctx.bot.send_message(
@@ -248,15 +250,64 @@ def select_manage_category_mode(upd, ctx):
             text=reply_text,
             parse_mode=parsemode.ParseMode.HTML,
             reply_markup=make_categories_menu(cats, include_back_button=True))
-
         return CAT_DEL_SELECT
 
-    elif upd.message.text == '/back':
+    elif upd.message.text == '/edit_cat':
 
+        cats = [c for c in Events.select()]
+        ctx.chat_data['user_cats'] = [c.event_type for c in cats]
+
+        reply_text = 'Select category to edit:'
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text=reply_text,
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=make_categories_menu(cats, include_back_button=True))
+        return CAT_EDIT_SELECT
+
+    elif upd.message.text == '/back':
         return start_logger(upd, ctx)
 
 
 def save_new_category_name(upd, ctx):
+
+    logger.info('Setting new category name:  %s \n' % upd.message.text)
+
+    provided_new_cat_name = upd.message.text.strip()
+
+    if provided_new_cat_name in ctx.chat_data['user_cats']:
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text='Category %s already exist. Select another name:\n' % provided_new_cat_name,
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=ReplyKeyboardRemove())
+        return CAT_SAVE_NAME
+
+    try:
+        provided_new_cat_name = str(provided_new_cat_name)
+        assert len(provided_new_cat_name) < 20
+        ctx.chat_data['new_cat'] = dict()
+        ctx.chat_data['new_cat']['name'] = provided_new_cat_name
+    except Exception as e:
+        logger.warning(e)
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text='Wrong format, please provide less 20 chars',
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=ReplyKeyboardRemove())
+        return CAT_SAVE_NAME
+
+    if 'new_cat' in ctx.chat_data and 'name' in ctx.chat_data['new_cat']:
+        reply_text = 'Allow amount for this category?'
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text=reply_text,
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=yes_no_menu)
+        return CAT_SAVE_AMOUNT
+
+
+def edit_category_name(upd, ctx):
 
     logger.info('Setting new category name:  %s \n' % upd.message.text)
 
@@ -332,7 +383,7 @@ def save_new_category_description(upd, ctx):
             chat_id=upd.effective_chat.id,
             text='Wrong answer.\nAllow description for this category?',
             parse_mode=parsemode.ParseMode.HTML,
-            reply_markup=ReplyKeyboardMarkup([['/yes', '/no']]))
+            reply_markup=ReplyKeyboardMarkup([['/yes', '/no']], resize_keyboard=True))
         return CAT_SAVE_AMOUNT
 
     if 'new_cat' in ctx.chat_data:
@@ -423,6 +474,61 @@ def select_category_for_delete(upd, ctx):
         parse_mode=parsemode.ParseMode.HTML,
         reply_markup=yes_no_menu)
     return CAT_DEL_ACCEPT
+
+
+def select_category_for_edit(upd, ctx):
+
+    logger.info('Selecting cat to edit:  %s \n' % upd.message.text)
+    logger.info('%s\n%s\n' % (upd, str(ctx.chat_data)))
+
+    if upd.message.text == '/back':
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text='Aborting.',
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=manage_cats_menu)
+        upd.message.text = '/manage_cats'
+        return select_logger_mode(upd, ctx)
+
+    requested_event_type = upd.message.text.strip()
+    if requested_event_type not in ctx.chat_data['user_cats']:
+        reply_text = 'Cant find needed cat for edit. Retry:\n'
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text=reply_text,
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=manage_cats_menu)
+        return CAT_MANAGE_MODE
+
+    user_id = upd.message.from_user.id
+
+    user, is_user_created = Users.get_or_create(tg_id=user_id)
+    event = Events.get(event_type=requested_event_type)
+    user_events = UsersEvents.select(UsersEvents.id, UsersEvents.created_at).where(
+        UsersEvents.user_id == user.id, UsersEvents.event_id == event.id).order_by(UsersEvents.created_at)
+
+    ctx.chat_data['edit_cat'] = dict()
+    ctx.chat_data['edit_cat']['user_id_db'] = user.id
+
+    reply_text = ''
+    if event:
+        reply_text += 'Set new name for selected category. Current name: <pre>%s</pre>\n' \
+                      '/skip for keep current name.\n' % requested_event_type
+        ctx.chat_data['edit_cat']['cat_name'] = event.event_type
+    if user_events:
+        reply_text += 'It contains %d saved events.\n' % len(user_events)
+        reply_text += 'The oldest: %s\n' % str(user_events[0].created_at)[:16]
+        reply_text += 'The newest: %s\n' % str(user_events[-1].created_at)[:16]
+        ctx.chat_data['del_cat']['user_event_ids'] = [e.id for e in user_events]
+    else:
+        reply_text += 'There are no saved events in this category.\n'
+
+    ctx.bot.send_message(
+        chat_id=upd.effective_chat.id,
+        text=reply_text,
+        parse_mode=parsemode.ParseMode.HTML,
+        reply_markup=yes_no_menu)
+    return CAT_EDIT_NAME
 
 
 def accept_cat_deletion(upd, ctx):
@@ -599,7 +705,8 @@ LOGGER_MODE, CAT_LIST, \
     LOG_EVENT, ADD_AMOUNT, ADD_DESCR, \
     CAT_MANAGE_MODE, CAT_SAVE_NAME, CAT_SAVE_AMOUNT, CAT_SAVE_DESCR, \
     CAT_DEL_SELECT, CAT_DEL_ACCEPT, \
-    CAT_VIEW_TIMEFRAME, CAT_VIEW_RENDER = map(chr, range(13))
+    CAT_EDIT_SELECT, CAT_EDIT_NAME, CAT_EDIT_AMOUNT, CAT_EDIT_DESCR, \
+    CAT_VIEW_TIMEFRAME, CAT_VIEW_RENDER = map(chr, range(17))
 
 
 logger_handler = ConversationHandler(
@@ -618,6 +725,11 @@ logger_handler = ConversationHandler(
 
         CAT_DEL_SELECT: [MessageHandler(Filters.text, select_category_for_delete)],
         CAT_DEL_ACCEPT: [MessageHandler(Filters.text, accept_cat_deletion)],
+
+        CAT_EDIT_SELECT: [MessageHandler(Filters.text, select_category_for_edit)],
+        CAT_EDIT_NAME: [MessageHandler(Filters.text, edit_category_name)],
+        # CAT_EDIT_AMOUNT: [MessageHandler(Filters.text, edit_category_amount)],
+        # CAT_EDIT_DESCR: [MessageHandler(Filters.text, edit_category_description)],
 
         CAT_VIEW_TIMEFRAME: [MessageHandler(Filters.text, select_vew_timeframe)],
         CAT_VIEW_RENDER: [MessageHandler(Filters.text, render_view_timeframe)],

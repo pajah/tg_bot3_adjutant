@@ -18,7 +18,7 @@ def make_categories_menu(categories, include_new_cat=False, include_back_button=
     return ReplyKeyboardMarkup(buttons)
 
 
-logger_start_menu = ReplyKeyboardMarkup(logger_menu_buttons)
-manage_cats_menu = ReplyKeyboardMarkup(manage_cats_buttons)
+logger_start_menu = ReplyKeyboardMarkup(logger_menu_buttons, resize_keyboard=True)
+manage_cats_menu = ReplyKeyboardMarkup(manage_cats_buttons, resize_keyboard=True)
 yes_no_menu = ReplyKeyboardMarkup(yes_no_buttons, resize_keyboard=True)
-timeframe_menu = ReplyKeyboardMarkup(timeframe_buttons)
+timeframe_menu = ReplyKeyboardMarkup(timeframe_buttons, resize_keyboard=True)
