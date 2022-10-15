@@ -131,3 +131,15 @@ DEBUG:telegram.bot:No new updates found.
 DEBUG:telegram.bot:[]
 DEBUG:telegram.bot:Exiting: get_updates
 DEBUG:telegram.bot:Entering: get_updates
+DEBUG:telegram.bot:No new updates found.
+DEBUG:telegram.bot:[]
+DEBUG:telegram.bot:Exiting: get_updates
+DEBUG:telegram.bot:Entering: get_updates
+DEBUG:telegram.bot:No new updates found.
+DEBUG:telegram.bot:[]
+DEBUG:telegram.bot:Exiting: get_updates
+DEBUG:telegram.bot:Entering: get_updates
+DEBUG:telegram.bot:No new updates found.
+DEBUG:telegram.bot:[]
+DEBUG:telegram.bot:Exiting: get_updates
+DEBUG:telegram.bot:Entering: get_updates
