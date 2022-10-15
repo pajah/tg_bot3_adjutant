@@ -8,6 +8,10 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Conve
 from handlers.commands import start, display_help, cancel
 from handlers.event_logger import logger_handler
 
+from config import LOG_FILE
+
+
+logging.basicConfig(filename=LOG_FILE, encoding='utf-8', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
