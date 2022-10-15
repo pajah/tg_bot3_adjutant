@@ -11,7 +11,7 @@ from handlers.event_logger import logger_handler
 from config import LOG_FILE
 
 
-logging.basicConfig(filename=LOG_FILE, encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
