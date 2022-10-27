@@ -62,6 +62,7 @@ def start(upd, ctx):
             defaults={
                 'username': upd.message.from_user.first_name
             })
+        ctx.chat_data['user_db_id'] = user_initiator.id
 
         if not user_is_created:
             start_adjutant(upd, ctx)
@@ -76,5 +77,5 @@ def cancel(upd, ctx):
     logger.warning("User %s canceled the conversation.", user.first_name)
     upd.message.reply_text('Bye! I hope we can talk again some day.',
                            reply_markup=ReplyKeyboardRemove())
-
+    ctx.chat_data = []
     return ConversationHandler.END

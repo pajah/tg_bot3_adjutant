@@ -6,12 +6,12 @@ import logging
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, InlineQueryHandler
 
 from handlers.commands import start, display_help, cancel
-from handlers.event_logger import logger_handler
+from handlers.event_logger import logger_handler, log_event
 
 from config import LOG_FILE
 
 
-logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG)
+# logging.basicConfig(filename=LOG_FILE, level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 
@@ -29,10 +29,12 @@ def bot_run():
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler(command='start', callback=start))
+
     dp.add_handler(CommandHandler(command='help', callback=display_help))
     dp.add_handler(CommandHandler(command='cancel', callback=cancel))
     dp.add_handler(CommandHandler(command='debug', callback=debug))
     dp.add_handler(logger_handler)
+    # dp.add_handler(CommandHandler(command='log', callback=log_event))
 
     updater.start_polling()
 
