@@ -50,6 +50,17 @@ def select_logger_mode(upd, ctx):
     if upd.message.text == '/back':
         return start_logger(upd, ctx)
 
+    if upd.message.text == '/logger':
+        reply_text = 'What can I do for you?\n'
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text=reply_text,
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=logger_start_menu)
+        for option in logger_menu_buttons:
+            reply_text += '%s\n' % option[0]
+        return LOGGER_MODE
+
     if upd.message.text == '/log':
         ctx.chat_data['logger_mode'] = 'log'
 
