@@ -1,4 +1,4 @@
-from telegram import ReplyKeyboardMarkup, KeyboardButton
+from telegram import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
 logger_menu_buttons = [['/log'], ['/view'], ['/manage_cats'], ['/cancel']]
 yes_no_buttons = [['/yes'], ['/no']]
@@ -19,10 +19,15 @@ def make_categories_menu(categories, include_new_cat=False, include_back_button=
     return ReplyKeyboardMarkup(buttons)
 
 
-def make_custom_cat_amount_menu(cat_name):
+def make_custom_cat_amount_menu(cat_name, **kwargs):
     if cat_name == 'POTATOES':
         buttons = [['1'], ['2']]
         return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+    elif cat_name == 'SMOCKING':
+        buttons = [['0.5'], ['1']]
+        return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+    elif cat_name == 'WEIGHT':
+        return ReplyKeyboardRemove()
 
 
 logger_start_menu = ReplyKeyboardMarkup(logger_menu_buttons, resize_keyboard=True)
