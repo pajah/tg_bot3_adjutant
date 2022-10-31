@@ -581,18 +581,6 @@ def edit_category_description(upd, ctx):
                 ctx.chat_data.pop('edit_cat')
                 ctx.chat_data.pop('logger_mode')
                 return start_logger(upd, ctx)
-                #
-                # if ctx.chat_data.get('need_log', False):
-                #     cats = [c for c in Events.select().where(Events.user_id == db_user_id)]
-                #     reply_text += 'Select category for new event:\n'
-                #     ctx.bot.send_message(
-                #         chat_id=upd.effective_chat.id,
-                #         text=reply_text,
-                #         parse_mode=parsemode.ParseMode.HTML,
-                #         reply_markup=make_categories_menu(cats, include_new_cat=True))
-                #     return LOG_EVENT
-                # ctx.chat_data.pop('user_cats')
-                # return start_logger(upd, ctx)
     else:
         logger.critical(str(upd))
         logger.critical(str(ctx.chat_data))
@@ -700,7 +688,7 @@ def select_category_for_edit(upd, ctx):
         reply_text += 'It contains %d saved events.\n' % len(user_events)
         reply_text += 'The oldest: %s\n' % str(user_events[0].created_at)[:16]
         reply_text += 'The newest: %s\n' % str(user_events[-1].created_at)[:16]
-        ctx.chat_data['del_cat']['user_event_ids'] = [e.id for e in user_events]
+        ctx.chat_data['edit_cat']['user_event_ids'] = [e.id for e in user_events]
     else:
         reply_text += 'There are no saved events in this category.\n'
 
