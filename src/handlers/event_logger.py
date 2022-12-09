@@ -10,7 +10,7 @@ from handlers.commands import start
 from event_plotter import plot_week_events, plot_month_events, plot_day_events, \
     plot_week_events_custom, plot_month_events_custom
 from markups.logger_menu import logger_menu_buttons, logger_start_menu, make_categories_menu, yes_no_menu, \
-    timeframe_menu, manage_cats_menu, default_amount_menu, make_custom_cat_amount_menu
+    timeframe_menu, manage_cats_menu, default_amount_menu, make_custom_cat_amount_menu, utils_menu
 from models import Users, Events, UsersEvents
 
 
@@ -96,6 +96,21 @@ def select_logger_mode(upd, ctx):
             reply_markup=manage_cats_menu,
             )
         return CAT_MANAGE_MODE
+
+    elif upd.message.text == '/utils':
+        ctx.chat_data['logger_mode'] = 'utils'
+        reply_text = 'Select an option:\n'
+        # for cat in ctx.chat_data['user_cats']:
+        #     reply_text += '<pre>%s</pre>\n' % cat
+        # reply_text += 'Select needed action:\n' \
+        #               '/add_cat \n/edit_cat\n/del_cat\n/back\n'
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text=reply_text,
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=utils_menu,
+            )
+        return UTILS_MODE
 
 
 def log_event(upd, ctx):
@@ -500,7 +515,6 @@ def save_new_category_description(upd, ctx):
     db_user_id = ctx.chat_data['user_db_id']
 
     if 'new_cat' in ctx.chat_data:
-
         if all(_ in ctx.chat_data['new_cat'] for _ in ['name', 'has_description', 'has_amount']):
             logger.info('Try to save new cat do DB.')
             new_event = Events.create(event_type=ctx.chat_data['new_cat']['name'],
@@ -530,6 +544,17 @@ def save_new_category_description(upd, ctx):
                         parse_mode=parsemode.ParseMode.HTML,
                         reply_markup=make_categories_menu(cats, include_new_cat=True))
                     return LOG_EVENT
+
+                if ctx.chat_data.get('need_log_forgotten', False):
+                    cats = [c for c in Events.select().where(Events.user_id == db_user_id)]
+                    reply_text += 'Select category for new forgotten event:\n'
+                    ctx.bot.send_message(
+                        chat_id=upd.effective_chat.id,
+                        text=reply_text,
+                        parse_mode=parsemode.ParseMode.HTML,
+                        reply_markup=make_categories_menu(cats, include_new_cat=True))
+                    return LOG_FORGOTTEN_EVENT
+
                 ctx.chat_data.pop('user_cats')
                 return start_logger(upd, ctx)
     else:
@@ -856,8 +881,8 @@ def render_view_timeframe(upd, ctx):
             reply_markup=logger_start_menu)
         return start_logger(upd, ctx)
 
-    # DAY
-    elif requested_time_frame == '/day':
+    # 24H
+    elif requested_time_frame == '/24h':
         day_ago = datetime.date.today() - datetime.timedelta(days=1 + 1)  # for today
         day_events = UsersEvents \
             .select(UsersEvents.id, UsersEvents.created_at, UsersEvents.amount, UsersEvents.description) \
@@ -889,12 +914,146 @@ def render_view_timeframe(upd, ctx):
         return CAT_VIEW_RENDER
 
 
+def select_utils_mode(upd, ctx):
+
+    logger.info('Selecting utils mode:  %s \n' % upd.message.text)
+    db_user_id = ctx.chat_data['user_db_id']
+    cats = [c for c in Events.select().where(Events.user_id == db_user_id)]
+    ctx.chat_data['user_cats'] = [c.event_type for c in cats]
+    ctx.chat_data['user_custom_cats'] = [c.event_type for c in cats if c.is_custom]
+
+    if upd.message.text == '/back':
+        return start_logger(upd, ctx)
+
+    if upd.message.text == '/delete_record':
+        # reply_text = 'What can I do for you?\n'
+        # ctx.bot.send_message(
+        #     chat_id=upd.effective_chat.id,
+        #     text=reply_text,
+        #     parse_mode=parsemode.ParseMode.HTML,
+        #     reply_markup=logger_start_menu)
+        # for option in logger_menu_buttons:
+        #     reply_text += '%s\n' % option[0]
+        # return LOGGER_MODE
+        # TBD
+        pass
+
+    if upd.message.text == '/log_forgotten':
+        ctx.chat_data['logger_mode'] = 'log_forgotten'
+
+        reply_text = 'Select category:'
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text=reply_text,
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=make_categories_menu(cats, include_new_cat=True, include_back_button=True))
+        return LOG_FORGOTTEN_EVENT
+
+
+def log_forgotten_event(upd, ctx):
+    logger.info('Log forgotten event. \n')
+    logger.info('%s\n%s\n' % (upd, str(ctx.chat_data)))
+
+    db_user_id = ctx.chat_data['user_db_id']
+
+    event_type = upd.message.text
+
+    if event_type == '/add_new_cat':
+        ctx.chat_data['need_log_forgotten'] = True
+        reply_text = 'Send new category name:\n or type /back\n'
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text=reply_text,
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=ReplyKeyboardRemove())
+        return CAT_SAVE_NAME
+
+    if upd.message.text == '/back':
+        return start_logger(upd, ctx)
+
+    if event_type not in ctx.chat_data['user_cats']:
+        reply_text = 'Can\'t log. Category not found: %s.\n Aborting' % event_type
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text=reply_text,
+            parse_mode=parsemode.ParseMode.HTML,
+            reply_markup=ReplyKeyboardRemove())
+        return ConversationHandler.END
+
+    tg_user_id = upd.message.from_user.id
+
+    user, is_user_created = Users.get_or_create(tg_id=tg_user_id)
+    event = Events.get(event_type=event_type, user_id=db_user_id)
+
+    # selected cat is ok
+    if event.has_amount:
+        ctx.chat_data['need_amount'] = True
+    if event.has_description:
+        ctx.chat_data['need_description'] = True
+
+    reply_text = ''
+    if 'user_cats' in ctx.chat_data:
+        if event_type in ctx.chat_data['user_cats']:
+            logger.info('Create forgotten user event.')
+            reply_text += 'When the event took place?\n' \
+                          'ex: ' \
+                          '<pre>2022-12-31 14:15:16</pre>\n' \
+                          '<pre>2022-12-31</pre>\n' \
+                          '<pre>2w 7d 21h 55m 10s ago</pre>\n' \
+                          '<pre>3m ago</pre>\n'
+            ctx.bot.send_message(
+                chat_id=upd.effective_chat.id,
+                text=reply_text,
+                parse_mode=parsemode.ParseMode.HTML,
+                reply_markup=ReplyKeyboardRemove())
+            return SET_FORGOTTEN_TIME
+
+        #     user_event = UsersEvents.create(user_id=user.id, event_id=event.id)
+        #     if user_event:
+        #         ctx.chat_data['last_event_id'] = user_event.id
+        #         reply_text = 'Event for %s saved correctly!\n' % event_type
+        #
+        # if ctx.chat_data.get('need_amount', False):
+        #     reply_text += 'Please set amount (default=1):\n'
+        #
+        #     markup = make_custom_cat_amount_menu(event_type) if \
+        #         event_type in ctx.chat_data['user_custom_cats'] else default_amount_menu
+        #
+        #     ctx.bot.send_message(
+        #         chat_id=upd.effective_chat.id,
+        #         text=reply_text,
+        #         parse_mode=parsemode.ParseMode.HTML,
+        #         reply_markup=markup)
+        #     return ADD_AMOUNT
+        #
+        # if ctx.chat_data.get('need_description', False):
+        #     reply_text += 'Please set description (default=''):\n'
+        #     ctx.bot.send_message(
+        #         chat_id=upd.effective_chat.id,
+        #         text=reply_text,
+        #         parse_mode=parsemode.ParseMode.HTML,
+        #         reply_markup=ReplyKeyboardMarkup([['/skip']], resize_keyboard=True))
+        #     return ADD_DESCR
+        #
+        # ctx.bot.send_message(
+        #     chat_id=upd.effective_chat.id,
+        #     text=reply_text,
+        #     parse_mode=parsemode.ParseMode.HTML,
+        #     reply_markup=logger_start_menu)
+        # return start_logger(upd, ctx)
+
+
+def set_forgotten_time(upd, ctx):
+    logger.info("Setting time for forgotten event")
+
+
 LOGGER_MODE, CAT_LIST, \
     LOG_EVENT, ADD_AMOUNT, ADD_DESCR, \
     CAT_MANAGE_MODE, CAT_SAVE_NAME, CAT_SAVE_AMOUNT, CAT_SAVE_DESCR, \
     CAT_DEL_SELECT, CAT_DEL_ACCEPT, \
     CAT_EDIT_SELECT, CAT_EDIT_NAME, CAT_EDIT_AMOUNT, CAT_EDIT_DESCR, \
-    CAT_VIEW_TIMEFRAME, CAT_VIEW_RENDER = map(chr, range(17))
+    UTILS_MODE, LOG_FORGOTTEN_EVENT, SET_FORGOTTEN_TIME, \
+    CAT_VIEW_TIMEFRAME, CAT_VIEW_RENDER = map(chr, range(20))
 
 
 logger_handler = ConversationHandler(
@@ -918,6 +1077,10 @@ logger_handler = ConversationHandler(
         CAT_EDIT_NAME: [MessageHandler(Filters.text, edit_category_name)],
         CAT_EDIT_AMOUNT: [MessageHandler(Filters.text, edit_category_amount)],
         CAT_EDIT_DESCR: [MessageHandler(Filters.text, edit_category_description)],
+
+        UTILS_MODE: [MessageHandler(Filters.text, select_utils_mode)],
+        LOG_FORGOTTEN_EVENT: [MessageHandler(Filters.text, log_forgotten_event)],
+        SET_FORGOTTEN_TIME: [MessageHandler(Filters.text, set_forgotten_time)],
 
         CAT_VIEW_TIMEFRAME: [MessageHandler(Filters.text, select_vew_timeframe)],
         CAT_VIEW_RENDER: [MessageHandler(Filters.text, render_view_timeframe)],

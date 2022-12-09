@@ -1,9 +1,10 @@
 from telegram import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
-logger_menu_buttons = [['/log'], ['/view'], ['/manage_cats'], ['/cancel']]
+logger_menu_buttons = [['/log'], ['/view'], ['/utils'], ['/manage_cats'], ['/cancel']]
 yes_no_buttons = [['/yes'], ['/no']]
 manage_cats_buttons = [['/add_cat'], ['/edit_cat'], ['/del_cat'], ['/back']]
-timeframe_buttons = [['/day'], ['/week'], ['/month'], ['/back']]
+utils_buttons = [['/log_forgotten'], ['/delete_record'], ['/back']]
+timeframe_buttons = [['/24h'], ['/week'], ['/month'], ['/back']]
 default_amount_buttons = [['0.5'], ['1'], ['2']]
 
 
@@ -32,6 +33,7 @@ def make_custom_cat_amount_menu(cat_name, **kwargs):
 
 logger_start_menu = ReplyKeyboardMarkup(logger_menu_buttons, resize_keyboard=True)
 manage_cats_menu = ReplyKeyboardMarkup(manage_cats_buttons, resize_keyboard=True)
+utils_menu = ReplyKeyboardMarkup(utils_buttons, resize_keyboard=True)
 yes_no_menu = ReplyKeyboardMarkup(yes_no_buttons, resize_keyboard=True)
 timeframe_menu = ReplyKeyboardMarkup(timeframe_buttons, resize_keyboard=True)
 default_amount_menu = ReplyKeyboardMarkup(default_amount_buttons, resize_keyboard=True)
