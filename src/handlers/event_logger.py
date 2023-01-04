@@ -780,7 +780,7 @@ def accept_cat_deletion(upd, ctx):
         return CAT_DEL_ACCEPT
 
 
-def select_vew_timeframe(upd, ctx):
+def select_view_timeframe(upd, ctx):
 
     logger.info('Selecting view timeframe for cat:  %s \n' % upd.message.text)
     logger.info('%s\n%s\n' % (upd, str(ctx.chat_data)))
@@ -825,7 +825,7 @@ def render_view_timeframe(upd, ctx):
     requested_time_frame = upd.message.text.strip()
 
     if requested_time_frame == '/back':
-        reply_text = 'Select time frame:'
+        reply_text = 'Select category:'
         ctx.bot.send_message(
             chat_id=upd.effective_chat.id,
             text=reply_text,
@@ -845,6 +845,16 @@ def render_view_timeframe(upd, ctx):
         logger.warning('Weekly events:\n')
         logger.warning(len(week_events))
         logger.warning(str(week_events))
+
+        if not week_events:
+            reply_text = 'Seems there are no records for chosen period.\n' \
+                         'Select another time frame:'
+            ctx.bot.send_message(
+                chat_id=upd.effective_chat.id,
+                text=reply_text,
+                parse_mode=parsemode.ParseMode.HTML,
+                reply_markup=timeframe_menu)
+            return CAT_VIEW_RENDER
 
         if requested_cat_name in ctx.chat_data['user_custom_cats']:
             plot_week_events_custom(user_db_id, requested_cat_name, week_events)
@@ -870,6 +880,16 @@ def render_view_timeframe(upd, ctx):
         logger.warning(len(month_events))
         logger.warning(str(month_events))
 
+        if not month_events:
+            reply_text = 'Seems there are no records for chosen period.\n' \
+                         'Select another time frame:'
+            ctx.bot.send_message(
+                chat_id=upd.effective_chat.id,
+                text=reply_text,
+                parse_mode=parsemode.ParseMode.HTML,
+                reply_markup=timeframe_menu)
+            return CAT_VIEW_RENDER
+
         if requested_cat_name in ctx.chat_data['user_custom_cats']:
             plot_month_events_custom(user_db_id, requested_cat_name, month_events)
         else:
@@ -882,7 +902,7 @@ def render_view_timeframe(upd, ctx):
         return start_logger(upd, ctx)
 
     # 24H
-    elif requested_time_frame == '/24h':
+    elif requested_time_frame == '/24h' or '/day':
         day_ago = datetime.date.today() - datetime.timedelta(days=1 + 1)  # for today
         day_events = UsersEvents \
             .select(UsersEvents.id, UsersEvents.created_at, UsersEvents.amount, UsersEvents.description) \
@@ -895,6 +915,16 @@ def render_view_timeframe(upd, ctx):
         logger.warning('Day events:\n')
         logger.warning(len(day_events))
         logger.warning(str(day_events))
+
+        if not day_events:
+            reply_text = 'Seems there are no records for chosen period.\n' \
+                         'Select another time frame:'
+            ctx.bot.send_message(
+                chat_id=upd.effective_chat.id,
+                text=reply_text,
+                parse_mode=parsemode.ParseMode.HTML,
+                reply_markup=timeframe_menu)
+            return CAT_VIEW_RENDER
 
         plot_day_events(user_db_id, requested_cat_name, day_events)
 
@@ -1082,7 +1112,7 @@ logger_handler = ConversationHandler(
         LOG_FORGOTTEN_EVENT: [MessageHandler(Filters.text, log_forgotten_event)],
         SET_FORGOTTEN_TIME: [MessageHandler(Filters.text, set_forgotten_time)],
 
-        CAT_VIEW_TIMEFRAME: [MessageHandler(Filters.text, select_vew_timeframe)],
+        CAT_VIEW_TIMEFRAME: [MessageHandler(Filters.text, select_view_timeframe)],
         CAT_VIEW_RENDER: [MessageHandler(Filters.text, render_view_timeframe)],
     },
     fallbacks=[CommandHandler('cancel', cancel)]

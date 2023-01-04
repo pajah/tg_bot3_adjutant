@@ -133,10 +133,13 @@ def plot_week_events_custom(user_db_id, cat_name, events_list, **kwargs):
 
     if cat_name == 'WEIGHT':
         CustomCatPlotter().plot_weight(user_db_id=user_db_id, cat_name=cat_name, events_list=events_list,
-                                       period_days=7, **kwargs)
+                                       period_days=8, **kwargs)
+    elif cat_name == 'SMOCKING':
+        CustomCatPlotter().plot_smocking(user_db_id=user_db_id, cat_name=cat_name, events_list=events_list,
+                                         period_days=8, **kwargs)
 
     else:
-        logger.debug(f'Custom function for {cat_name} no exists!')
+        logger.debug(f'Custom function for {cat_name} not exists!')
         plot_week_events(user_db_id, cat_name, events_list)
 
 
@@ -189,6 +192,12 @@ def plot_month_events_custom(user_db_id, cat_name, events_list, **kwargs):
     if cat_name == 'WEIGHT':
         CustomCatPlotter().plot_weight(user_db_id=user_db_id, cat_name=cat_name, events_list=events_list,
                                        period_days=31, **kwargs)
+    elif cat_name == 'SMOCKING':
+        CustomCatPlotter().plot_smocking(user_db_id=user_db_id, cat_name=cat_name, events_list=events_list,
+                                         period_days=31, **kwargs)
+    else:
+        logger.debug(f'Custom function for {cat_name} not exists!')
+        plot_month_events(user_db_id, cat_name, events_list)
 
 
 class CustomCatPlotter:
@@ -339,6 +348,52 @@ class CustomCatPlotter:
 
         plt.subplots_adjust(bottom=0.2)
         plt.suptitle(t='Average %d days amount for %s : %s' % (period_days, cat_name, str(avg_weight)[:5]),
+                     x=0.65)
+        plt.savefig('temp_%s.png' % user_db_id)
+        plt.close()
+
+
+    def plot_smocking(self, user_db_id, cat_name, events_list, period_days, **kwargs):
+
+        # PLOT
+        fig, ax = plt.subplots()
+        plt.grid(axis='y', color=COLOR_GRID, linestyle='--', linewidth=0.1)
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))  # integer Y axe
+        ax.set_axisbelow(True)  # hide grid behind bars
+
+        days = get_days_list_for_n_days_till_tomorrow(period_days)
+        bar_labels = days
+
+        amounts = []
+        for day_date in days:
+            day_data = []
+            for event in events_list:
+                if day_date.get('value') in str(event.created_at):
+                    day_data.append(event.amount)
+            amounts.append(day_data)
+
+        total_amounts = [sum(day_value) for day_value in amounts]
+
+        for bar in range(len(amounts)):
+            if amounts[bar]:
+                bottom = 0
+                for value in amounts[bar]:
+                    plt.bar(x=bar, height=value, bottom=bottom,
+                            color=COLOR_BARS, edgecolor=COLOR_BARS_BORDERS, width=0.5)
+                    bottom += value
+            else:
+                pass
+
+        ax.plot(total_amounts, color=COLORS_TRAND_LINE)
+        ax.set_xticks(range(len(bar_labels)), [bar.get('value') for bar in bar_labels], size='small',
+                      rotation='vertical')
+        # update weekends with bold
+        for i in range(len(bar_labels)):
+            if bar_labels[i].get('is_weekend'):
+                ax.get_xticklabels()[i].set_weight('bold')
+
+        plt.subplots_adjust(bottom=0.2)
+        plt.suptitle(t='Total week amount for %s : %s' % (cat_name, str(sum(total_amounts))),
                      x=0.65)
         plt.savefig('temp_%s.png' % user_db_id)
         plt.close()
